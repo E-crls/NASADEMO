@@ -33,19 +33,19 @@ def plot_graph(values, parameter_name):
     st.pyplot(plt)
 
 parameter_names = {
-    "PRECTOTCORR": "Precipitação Corrigida (mm/hora)",
-    "GWETROOT": "Umidade na Camada Superior das Raízes",
-    "GWETPROF": "Umidade no Perfil do Solo",
-    "GWETTOP": "Umidade na Superfície do Solo",
-    "EVPTRNS": "Evapotranspiração (mm/hora)",
-    "T2M": "Temperatura a 2m (°C)",
-    "WS10M": "Velocidade do Vento a 10m (m/s)",
-    "WD10M": "Direção do Vento a 10m (graus)",
-    "ALLSKY_SFC_UV_INDEX": "Índice UV na Superfície",
-    "ALLSKY_SRF_ALB": "Albedo da Superfície",
-    "RH2M": "Umidade Relativa a 2m",
-    "ALLSKY_SFC_SW_DWN": "Irradiação Solar na Superfície",
-    "ALLSKY_KT": "Transmissividade da Atmosfera"
+    "PRECTOTCORR": "Corrected Precipitation (mm/hour)",
+    "GWETROOT": "Root Zone Soil Wetness",
+    "GWETPROF": "Profile Soil Moisture",
+    "GWETTOP": "Surface Soil Wetness",
+    "EVPTRNS": "Evapotranspiration (mm/hour)",
+    "T2M": "Temperature at 2m (°C)",
+    "WS10M": "Wind Speed at 10m (m/s)",
+    "WD10M": "Wind Direction at 10m (degrees)",
+    "ALLSKY_SFC_UV_INDEX": "Surface UV Index",
+    "ALLSKY_SRF_ALB": "Surface Albedo",
+    "RH2M": "Relative Humidity at 2m",
+    "ALLSKY_SFC_SW_DWN": "Surface Shortwave Downward Irradiance",
+    "ALLSKY_KT": "Atmospheric Transmissivity"
 }
 
 def generate_suggestions(data):
@@ -55,25 +55,27 @@ def generate_suggestions(data):
     if precip_data:
         precip_value = list(precip_data.values())[0]
         if precip_value < 5:
-            suggestions.append(f"Precipitação baixa ({precip_value} mm). Sugerido iniciar irrigação.")
+            suggestions.append(f"Low precipitation ({precip_value} mm). Suggested to start irrigation.")
         else:
-            suggestions.append(f"Precipitação suficiente ({precip_value} mm). Irrigação não necessária.")
+            suggestions.append(f"Sufficient precipitation ({precip_value} mm). Irrigation not necessary.")
 
     uv_data = data.get('ALLSKY_SFC_UV_INDEX', {})
     if uv_data:
         uv_value = list(uv_data.values())[0]
-        if uv_value >= 8:
-            suggestions.append(f"Índice UV elevado ({uv_value}). Proteja as plantas.")
+        if uv_value >= 8:  # Define o limite para UV elevado
+            suggestions.append(f"High UV Index ({uv_value}). Protect the plants.")
         else:
-            suggestions.append(f"Índice UV seguro ({uv_value}). Nenhuma ação necessária.")
+            suggestions.append(f"Safe UV Index ({uv_value}). No action needed.")
+
 
     wind_speed_data = data.get('WS10M', {})
     if wind_speed_data:
         wind_speed_value = list(wind_speed_data.values())[0]
         if wind_speed_value > 5:
-            suggestions.append(f"Vento forte ({wind_speed_value} m/s). Pulverização não recomendada.")
+            suggestions.append(f"Strong wind ({wind_speed_value} m/s). Spraying not recommended.")
         else:
-            suggestions.append(f"Condições adequadas para pulverização ({wind_speed_value} m/s).")
+            suggestions.append(f"Suitable conditions for spraying ({wind_speed_value} m/s).")
+
 
     return suggestions
 
@@ -101,45 +103,45 @@ def generate_chatgpt_insights(culturas, tamanho, data, insights):
 
     return response.choices[0].message.content
 
-st.header("Selecione os seus tipos de culturas")
-milho = st.checkbox("Milho")
-soja = st.checkbox("Soja")
-algodao = st.checkbox("Algodão")
+st.header("Select your crop types")
+milho = st.checkbox("Corn")
+soja = st.checkbox("Soybean")
+algodao = st.checkbox("Cotton")
 
 culturas_selecionadas = []
 if milho:
-    culturas_selecionadas.append("Milho")
+    culturas_selecionadas.append("Corn")
 if soja:
-    culturas_selecionadas.append("Soja")
+    culturas_selecionadas.append("Soybean")
 if algodao:
-    culturas_selecionadas.append("Algodão")
+    culturas_selecionadas.append("Cotton")
 
 if not culturas_selecionadas:
-    st.warning("Você deve selecionar pelo menos um tipo de cultura.")
+    st.warning("You must select at least one crop type.")
 else:
-    st.success(f"Culturas selecionadas: {', '.join(culturas_selecionadas)}")
+    st.success(f"Selected crops: {', '.join(culturas_selecionadas)}")
 
-st.header("Selecione o tamanho da sua cultura")
+st.header("Select your crop size")
 tamanho_cultura = None
-if st.checkbox("Até 1 hectare"):
-    tamanho_cultura = "Até 1 hectare"
-elif st.checkbox("1 a 3 hectares"):
-    tamanho_cultura = "1 a 3 hectares"
-elif st.checkbox("Mais de 3 hectares"):
-    tamanho_cultura = "Mais de 3 hectares"
+if st.checkbox("Up to 1 hectare"):
+    tamanho_cultura = "Up to 1 hectare"
+elif st.checkbox("1 to 3 hectares"):
+    tamanho_cultura = "1 to 3 hectares"
+elif st.checkbox("More than 3 hectares"):
+    tamanho_cultura = "More than 3 hectares"
 
 if not tamanho_cultura:
-    st.warning("Você deve selecionar o tamanho da sua cultura.")
+    st.warning("You must select the size of your crop.")
 else:
-    st.success(f"Tamanho selecionado: {tamanho_cultura}")
+    st.success(f"Selected size: {tamanho_cultura}")
 
 if culturas_selecionadas and tamanho_cultura:
 
     min_date_allowed = date(2001, 1, 1)
     max_date_allowed = date(2024, 10, 10)
 
-    st.title("Selecione sua área no mapa e o intervalo de tempo")
-    st.write("Use o mapa abaixo para clicar e selecionar a área desejada, e depois escolha o intervalo de tempo.")
+    st.title("Select your area on the map and the time range") 
+    st.write("Use the map below to click and select the desired area, then choose the time range.")
 
     m = folium.Map(location=[-16.71, -49.26], zoom_start=10)
 
@@ -147,27 +149,27 @@ if culturas_selecionadas and tamanho_cultura:
 
     st_data = st_folium(m, width=700, height=500)
 
-    st.write(f"Selecione o intervalo de datas (entre {min_date_allowed} e {max_date_allowed}):")
-    start_date = st.date_input("Data de início", value=min_date_allowed, key="start_date", min_value=min_date_allowed, max_value=max_date_allowed)
-    end_date = st.date_input("Data de fim", value=max_date_allowed, key="end_date", min_value=min_date_allowed, max_value=max_date_allowed)
+    st.write(f"Select the date range (between {min_date_allowed} and {max_date_allowed}):")
+    start_date = st.date_input("Start date", value=min_date_allowed, key="start_date", min_value=min_date_allowed, max_value=max_date_allowed)
+    end_date = st.date_input("End date", value=max_date_allowed, key="end_date", min_value=min_date_allowed, max_value=max_date_allowed)
 
-    st.write(f"Data de início selecionada: {start_date}")
-    st.write(f"Data de fim selecionada: {end_date}")
+    st.write(f"Selected start date: {start_date}")
+    st.write(f"Selected end date: {end_date}")
 
     if st_data and 'last_clicked' in st_data and st_data['last_clicked'] is not None:
         latitude = st_data['last_clicked']['lat']
         longitude = st_data['last_clicked']['lng']
 
-        st.write("Coordenadas Selecionadas:")
+        st.write("Selected Coordinates:")
         st.success(f"Latitude: {latitude}, Longitude: {longitude}")
 
-        with st.form("Enviar Coordenadas e Intervalo de Tempo"):
-            st.write("Pronto para enviar os dados?")
+        with st.form("Send Coordinates and Time Interval"):
+            st.write("Ready to submit data?")
             st.text_input("Latitude", value=f"{latitude}", key="lat_input")
             st.text_input("Longitude", value=f"{longitude}", key="lon_input")
-            st.text_input("Data de Início", value=f"{start_date}", key="start_date_input")
-            st.text_input("Data de Fim", value=f"{end_date}", key="end_date_input")
-            submitted = st.form_submit_button("Enviar")
+            st.text_input("Start date", value=f"{start_date}", key="start_date_input")
+            st.text_input("End date", value=f"{end_date}", key="end_date_input")
+            submitted = st.form_submit_button("Submit")
 
             if submitted:
                 start_date_str = format_date_to_api(start_date)
@@ -180,7 +182,7 @@ if culturas_selecionadas and tamanho_cultura:
                 response_power = requests.get(api_power_url)
 
                 if response_power.status_code == 200:
-                    st.success("Dados da API POWER NASA recebidos com sucesso!")
+                    st.success("NASA API data received successfully!")
                     data = response_power.json()['properties']['parameter']
 
                     suggestions = generate_suggestions(data)
@@ -200,5 +202,5 @@ if culturas_selecionadas and tamanho_cultura:
                     chatgpt_insights = generate_chatgpt_insights(culturas_selecionadas, tamanho_cultura, data, insights)
                     st.text_area("Insights:", value=chatgpt_insights, height=200)
                 else:
-                    st.error(f"Erro ao fazer a requisição para API POWER NASA: {response_power.status_code}")
-                    st.write(f"Mensagem de erro: {response_power.text}")
+                    st.error(f"Error making request to NASA API: {response_power.status_code}")
+                    st.write(f"Error message: {response_power.text}")
