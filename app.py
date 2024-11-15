@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import requests
 
-# Buscando o token dos segredos do Streamlit
-token = st.secrets["TOKEN"]
+token = st.secrets.TOKEN
 url = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct"
 plt.style.use('classic')
 
@@ -88,16 +87,16 @@ def generate_hf_insights(culturas, tamanho, data, insights):
 
     # Create prompt based on inputs (culturas, tamanho, data, insights)
     prompt = f"""
-    O agricultor selecionou as seguintes opções:
-    - Culturas: {', '.join(culturas)}
-    - Tamanho da cultura: {tamanho}
-    - Dados meteorológicos: {data}
+    The farmer selected the following options:
+- Crops: {', '.join(culturas)}
+    -Crop size: {tamanho}
+    - Weather data: {data}
 
-    Com base nas informações acima, forneça insights úteis para o agricultor e estratégias recomendadas. Aqui estão algumas sugestões iniciais:
-    {insights}
+Based on the information above, provide useful insights for the farmer and recommended strategies. Here are some initial suggestions:
+{insights}
 
-    Gere mais sugestões e insights personalizados. Seja objetivo e resumido.
-    O output não pode ser em formato md. Escreva em texto normal
+   Generate more personalized suggestions and insights. Be objective and concise.
+The output cannot be in md format. Write in plain text
     """
 
     # Define headers with the token for Hugging Face API
