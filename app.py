@@ -15,11 +15,17 @@ def format_date_to_api(date_input):
     return date_input.strftime('%Y%m%d')
 
 def display_card(parameter_name, value):
+    if value == -999.0:  
+        return
     st.metric(label=parameter_name, value=value)
 
 def plot_graph(values, parameter_name):
+    valid_values = [v for v in values if v != -999.0]  
+    if not valid_values:  
+        st.warning(f"No valid data available for {parameter_name}.")
+        return
     plt.figure(figsize=(10, 4))
-    plt.plot(values, marker='o', linestyle='-', color='black')
+    plt.plot(valid_values, marker='o', linestyle='-', color='black')
     plt.title(f"{parameter_name}", fontsize=16, weight='bold')
     plt.xlabel("")
     plt.ylabel(parameter_name, fontsize=12)
@@ -27,6 +33,7 @@ def plot_graph(values, parameter_name):
     plt.yticks(fontsize=10)
     plt.box(False)
     st.pyplot(plt)
+
 
 parameter_names = {
     "PRECTOTCORR": "Corrected Precipitation (mm/hour)",
@@ -50,30 +57,32 @@ def generate_suggestions(data):
     precip_data = data.get('PRECTOTCORR', {})
     if precip_data:
         precip_value = list(precip_data.values())[0]
-        if precip_value < 5:
-            suggestions.append(f"Low precipitation ({precip_value} mm). Suggested to start irrigation.")
-        else:
-            suggestions.append(f"Sufficient precipitation ({precip_value} mm). Irrigation not necessary.")
+        if precip_value != -999.0: 
+            if precip_value < 5:
+                suggestions.append(f"Low precipitation ({precip_value} mm). Suggested to start irrigation.")
+            else:
+                suggestions.append(f"Sufficient precipitation ({precip_value} mm). Irrigation not necessary.")
 
     uv_data = data.get('ALLSKY_SFC_UV_INDEX', {})
     if uv_data:
         uv_value = list(uv_data.values())[0]
-        if uv_value >= 8:  # Define o limite para UV elevado
-            suggestions.append(f"High UV Index ({uv_value}). Protect the plants.")
-        else:
-            suggestions.append(f"Safe UV Index ({uv_value}). No action needed.")
-
+        if uv_value != -999.0:  
+            if uv_value >= 8:  
+                suggestions.append(f"High UV Index ({uv_value}). Protect the plants.")
+            else:
+                suggestions.append(f"Safe UV Index ({uv_value}). No action needed.")
 
     wind_speed_data = data.get('WS10M', {})
     if wind_speed_data:
         wind_speed_value = list(wind_speed_data.values())[0]
-        if wind_speed_value > 5:
-            suggestions.append(f"Strong wind ({wind_speed_value} m/s). Spraying not recommended.")
-        else:
-            suggestions.append(f"Suitable conditions for spraying ({wind_speed_value} m/s).")
-
+        if wind_speed_value != -999.0:  
+            if wind_speed_value > 5:
+                suggestions.append(f"Strong wind ({wind_speed_value} m/s). Spraying not recommended.")
+            else:
+                suggestions.append(f"Suitable conditions for spraying ({wind_speed_value} m/s).")
 
     return suggestions
+
 
 def generate_hf_insights(culturas, tamanho, data, insights):
     # Define parameters for Hugging Face model
@@ -99,23 +108,31 @@ Based on the information above, provide useful insights for the farmer and recom
 The output cannot be in md format. Write in plain text
     """
 
-    # Define headers with the token for Hugging Face API
     headers = {
-        'Authorization': f'Bearer {token}',  # Add your Hugging Face token
+        'Authorization': f'Bearer {token}',  
         'Content-Type': 'application/json'
     }
 
-    # Define the payload with prompt and parameters
     payload = {
         "inputs": prompt,
         "parameters": parameters
     }
 
-    # Send request to Hugging Face model API
+
     response = requests.post(url, headers=headers, json=payload)
 
-    # Extract and return the generated text from the response
-    response_text = response.json()[0]['generated_text'].strip()
+    if response.status_code != 200:
+        st.error(f"API request failed with status code {response.status_code}: {response.text}")
+        return "Failed to generate insights due to an API error."
+
+    response_json = response.json()
+
+    if isinstance(response_json, list) and len(response_json) > 0 and 'generated_text' in response_json[0]:
+        response_text = response_json[0]['generated_text'].strip()
+    else:
+        st.error("Unexpected response format from Hugging Face API. Please check the API response.")
+        st.write("API Response:", response_json)
+        response_text = "No insights generated due to an error in processing."
 
     return response_text
 
@@ -153,8 +170,8 @@ else:
 
 if culturas_selecionadas and tamanho_cultura:
 
-    min_date_allowed = date(2001, 1, 1)
-    max_date_allowed = date(2024, 12, 12)
+    min_date_allowed = date(2024, 6, 1)
+    max_date_allowed = date(2024, 11, 22)
 
     st.title("Select your area on the map and the time range")
     st.write("Use the map below to click and select the desired area, then choose the time range.")
@@ -165,12 +182,9 @@ if culturas_selecionadas and tamanho_cultura:
 
     st_data = st_folium(m, width=700, height=500)
 
-    st.write(f"Select the date range (between {min_date_allowed} and {max_date_allowed}):")
+    st.write(f"Select the date range (between {min_date_allowed} and {max_date_allowed}). Do not exceed 5 days:")
     start_date = st.date_input("Start date", value=min_date_allowed, key="start_date", min_value=min_date_allowed, max_value=max_date_allowed)
     end_date = st.date_input("End date", value=max_date_allowed, key="end_date", min_value=min_date_allowed, max_value=max_date_allowed)
-
-    st.write(f"Selected start date: {start_date}")
-    st.write(f"Selected end date: {end_date}")
 
     if st_data and 'last_clicked' in st_data and st_data['last_clicked'] is not None:
         latitude = st_data['last_clicked']['lat']
@@ -181,10 +195,6 @@ if culturas_selecionadas and tamanho_cultura:
 
         with st.form("Send Coordinates and Time Interval"):
             st.write("Ready to submit data?")
-            st.text_input("Latitude", value=f"{latitude}", key="lat_input")
-            st.text_input("Longitude", value=f"{longitude}", key="lon_input")
-            st.text_input("Start date", value=f"{start_date}", key="start_date_input")
-            st.text_input("End date", value=f"{end_date}", key="end_date_input")
             submitted = st.form_submit_button("Submit")
 
             if submitted:
@@ -208,11 +218,13 @@ if culturas_selecionadas and tamanho_cultura:
                     for parameter, values in data.items():
                         parameter_label = parameter_names.get(parameter, parameter)
                         value_list = list(values.values())
-
-                        if value_list:
-                            first_value = value_list[0]
+                        
+                        valid_values = [v for v in value_list if v != -999.0]
+                        
+                        if valid_values:  
+                            first_value = valid_values[0]
                             display_card(parameter_label, first_value)
-                            plot_graph(value_list, parameter_label)
+                            plot_graph(valid_values, parameter_label)
 
                     insights = "\n".join(suggestions)
                     chatgpt_insights = generate_hf_insights(culturas_selecionadas, tamanho_cultura, data, insights)
