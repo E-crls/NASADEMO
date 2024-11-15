@@ -4,15 +4,12 @@ from streamlit_folium import st_folium
 from datetime import date, datetime
 import requests
 import matplotlib.pyplot as plt
-import openai
 import os
-from openai import OpenAI
+import requests
 
-os.environ['OPENAI_API_KEY'] = "sk--"
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
+# Buscando o token dos segredos do Streamlit
+token = st.secrets["TOKEN"]
+url = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct"
 plt.style.use('classic')
 
 def format_date_to_api(date_input):
@@ -79,7 +76,17 @@ def generate_suggestions(data):
 
     return suggestions
 
-def generate_chatgpt_insights(culturas, tamanho, data, insights):
+def generate_hf_insights(culturas, tamanho, data, insights):
+    # Define parameters for Hugging Face model
+    parameters = {
+        "max_new_tokens": 5000,
+        "temperature": 0.01,
+        "top_k": 50,
+        "top_p": 0.95,
+        "return_full_text": False
+    }
+
+    # Create prompt based on inputs (culturas, tamanho, data, insights)
     prompt = f"""
     O agricultor selecionou as seguintes opções:
     - Culturas: {', '.join(culturas)}
@@ -93,15 +100,25 @@ def generate_chatgpt_insights(culturas, tamanho, data, insights):
     O output não pode ser em formato md. Escreva em texto normal
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "Você é um engenheiro agrônomo especializado em fitopatologia e otimização de produção agrícola."},
-            {"role": "user", "content": prompt}
-        ]
-    )
+    # Define headers with the token for Hugging Face API
+    headers = {
+        'Authorization': f'Bearer {token}',  # Add your Hugging Face token
+        'Content-Type': 'application/json'
+    }
 
-    return response.choices[0].message.content
+    # Define the payload with prompt and parameters
+    payload = {
+        "inputs": prompt,
+        "parameters": parameters
+    }
+
+    # Send request to Hugging Face model API
+    response = requests.post(url, headers=headers, json=payload)
+
+    # Extract and return the generated text from the response
+    response_text = response.json()[0]['generated_text'].strip()
+
+    return response_text
 
 st.header("Select your crop types")
 milho = st.checkbox("Corn")
@@ -138,9 +155,9 @@ else:
 if culturas_selecionadas and tamanho_cultura:
 
     min_date_allowed = date(2001, 1, 1)
-    max_date_allowed = date(2024, 10, 10)
+    max_date_allowed = date(2024, 12, 12)
 
-    st.title("Select your area on the map and the time range") 
+    st.title("Select your area on the map and the time range")
     st.write("Use the map below to click and select the desired area, then choose the time range.")
 
     m = folium.Map(location=[-16.71, -49.26], zoom_start=10)
@@ -199,7 +216,7 @@ if culturas_selecionadas and tamanho_cultura:
                             plot_graph(value_list, parameter_label)
 
                     insights = "\n".join(suggestions)
-                    chatgpt_insights = generate_chatgpt_insights(culturas_selecionadas, tamanho_cultura, data, insights)
+                    chatgpt_insights = generate_hf_insights(culturas_selecionadas, tamanho_cultura, data, insights)
                     st.text_area("Insights:", value=chatgpt_insights, height=200)
                 else:
                     st.error(f"Error making request to NASA API: {response_power.status_code}")
