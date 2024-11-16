@@ -170,8 +170,8 @@ else:
 
 if culturas_selecionadas and tamanho_cultura:
 
-    min_date_allowed = date(2024, 11, 1)
-    max_date_allowed = date(2024, 11, 6)
+    min_date_allowed = date(2024, 10, 1)
+    max_date_allowed = date(2024, 10, 6)
 
     st.title("Select your area on the map and the time range")
     st.write("Use the map below to click and select the desired area, then choose the time range.")
